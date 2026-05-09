@@ -1,0 +1,3462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Find the Imposter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        background: #08080e;
+      }
+      #root {
+        min-height: 100dvh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect, useCallback } = React;
+
+      const CSS = `
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html, body, #root {min-height: 100%;background: #08080e;margin: 0;padding: 0;}body {overflow-y: auto;-webkit-overflow-scrolling: touch;}
+      .game-root{min-height:100dvh; position:relative;font-family:'Rajdhani',sans-serif;color:#f0f0ea;background:#08080e}
+      .screen{
+  width:100%;
+  min-height:100dvh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+}
+      .screen::-webkit-scrollbar{width:0}
+      .cinzel{font-family:'Cinzel Decorative',serif!important}
+      :root{
+        --red:#c41e3a;--red2:#a01828;--red3:#3d0610;--red-glow:rgba(196,30,58,0.35);
+        --gold:#d4af37;--gold2:#a08020;--gold3:#3d2e08;--gold-glow:rgba(212,175,55,0.3);
+        --bg:#08080e;--bg2:#111119;--bg3:#1a1a26;--bg4:#22222f;
+        --txt:#f0f0ea;--txt2:#9090a0;--txt3:#505060;
+        --bdr:rgba(255,255,255,0.07);--bdr2:rgba(255,255,255,0.12);
+      }
+      @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes pop{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+      @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--red-glow)}50%{box-shadow:0 0 0 12px transparent}}
+      .anim-up{animation:fadeUp 0.35s ease-out both}
+      .anim-in{animation:fadeIn 0.3s ease-out both}
+      .anim-pop{animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
+      .delay-1{animation-delay:0.05s}.delay-2{animation-delay:0.1s}.delay-3{animation-delay:0.15s}.delay-4{animation-delay:0.2s}.delay-5{animation-delay:0.25s}
+      .btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;padding:14px 20px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.02em;white-space:nowrap}
+      .btn:disabled{opacity:0.35;pointer-events:none}
+      .btn:active{transform:scale(0.97)}
+      .btn-red{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;border:1px solid rgba(196,30,58,0.4)}
+      .btn-red:hover:not(:disabled){background:linear-gradient(135deg,#d42040,#b01830);box-shadow:0 4px 24px var(--red-glow)}
+      .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#08080e;border:1px solid rgba(212,175,55,0.4);font-weight:700}
+      .btn-gold:hover:not(:disabled){box-shadow:0 4px 24px var(--gold-glow)}
+      .btn-ghost{background:rgba(255,255,255,0.04);color:var(--txt2);border:1px solid var(--bdr)}
+      .btn-ghost:hover:not(:disabled){background:rgba(255,255,255,0.08);color:var(--txt);border-color:var(--bdr2)}
+      .btn-danger{background:rgba(196,30,58,0.15);color:#ff5570;border:1px solid rgba(196,30,58,0.3)}
+      .btn-danger:hover:not(:disabled){background:rgba(196,30,58,0.25)}
+      .card{background:var(--bg2);border:1px solid var(--bdr);border-radius:14px}
+      .card-glow-red{border-color:rgba(196,30,58,0.4);background:rgba(196,30,58,0.07)}
+      .card-glow-gold{border-color:rgba(212,175,55,0.35);background:rgba(212,175,55,0.06)}
+      .inp{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--txt);border-radius:10px;padding:11px 14px;font-family:'Rajdhani',sans-serif;font-size:16px;width:100%;transition:border-color 0.2s}
+      .inp:focus{outline:none;border-color:rgba(196,30,58,0.5)}
+      .inp::placeholder{color:var(--txt3)}
+      select.inp option{background:var(--bg2)}
+      .toggle-wrap{width:46px;height:26px;border-radius:13px;background:var(--bg4);cursor:pointer;position:relative;transition:background 0.25s;border:1px solid var(--bdr);flex-shrink:0}
+      .toggle-wrap.on{background:var(--red);border-color:var(--red2)}
+      .toggle-wrap::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform 0.25s;box-shadow:0 1px 4px rgba(0,0,0,0.4)}
+      .toggle-wrap.on::after{transform:translateX(20px)}
+      .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase}
+      .badge-red{background:rgba(196,30,58,0.2);color:#ff6680;border:1px solid rgba(196,30,58,0.3)}
+      .badge-gold{background:rgba(212,175,55,0.18);color:#e8c84a;border:1px solid rgba(212,175,55,0.3)}
+      .badge-gray{background:rgba(255,255,255,0.06);color:var(--txt2);border:1px solid var(--bdr)}
+      .badge-green{background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.25)}
+      .prog-bar{height:3px;background:var(--bg4);border-radius:4px;overflow:hidden}
+      .prog-fill{height:100%;border-radius:4px;transition:width 0.5s ease;background:linear-gradient(90deg,var(--red),var(--gold))}
+      .divider{display:flex;align-items:center;gap:12px;margin:20px 0}
+      .divider::before,.divider::after{content:'';flex:1;border-top:1px solid var(--bdr)}
+      .divider span{font-size:11px;color:var(--txt3);letter-spacing:0.15em;text-transform:uppercase}
+      .gradient-text{background:linear-gradient(135deg,var(--gold) 0%,#f5f0c8 45%,var(--red) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+      .range-inp{-webkit-appearance:none;width:100%;height:4px;border-radius:4px;background:var(--bg4);border:none;cursor:pointer;padding:0}
+      .range-inp::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--red);cursor:pointer;box-shadow:0 0 8px var(--red-glow)}
+      .range-inp:focus{outline:none}
+      .player-tap{cursor:pointer;transition:all 0.2s;user-select:none}
+      .player-tap:hover{transform:translateY(-2px)}
+      .player-tap.selected{transform:scale(1.02)}
+      .reveal-card{border-radius:18px;padding:32px 24px;text-align:center;transition:all 0.3s}
+      .bg-mesh{background-image:radial-gradient(ellipse at 50% 0%,rgba(196,30,58,0.1) 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,rgba(212,175,55,0.06) 0%,transparent 50%)}
+      .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px)}
+      .modal-box{background:var(--bg2);border:1px solid var(--bdr2);border-radius:20px;padding:28px 24px;width:100%;max-width:320px;animation:pop 0.3s cubic-bezier(0.34,1.56,0.64,1) both}
+      `;
+
+      const WORDS = {
+        common: [
+          "Paper",
+          "Mouse",
+          "Glass",
+          "Table",
+          "Chair",
+          "Phone",
+          "Window",
+          "Door",
+          "Bottle",
+          "Spoon",
+          "Fork",
+          "Knife",
+          "Plate",
+          "Cup",
+          "Bed",
+          "Pillow",
+          "Blanket",
+          "Mirror",
+          "Clock",
+          "Watch",
+          "Wallet",
+          "Key",
+          "Bag",
+          "Shoe",
+          "Sock",
+          "Shirt",
+          "Hat",
+          "Pen",
+          "Pencil",
+          "Book",
+          "Laptop",
+          "Screen",
+          "Keyboard",
+          "Lamp",
+          "Candle",
+          "Match",
+          "Box",
+          "Brush",
+          "Comb",
+          "Soap",
+          "Towel",
+          "Toothbrush",
+          "Hammer",
+          "Nail",
+          "Screw",
+          "Saw",
+          "Ladder",
+          "Rope",
+          "Chain",
+          "Wheel",
+          "Tire",
+          "Battery",
+          "Wire",
+          "Bulb",
+          "Remote",
+          "Camera",
+          "Radio",
+          "Guitar",
+          "Drum",
+          "Ball",
+          "Bat",
+          "Net",
+          "Ring",
+          "Coin",
+          "Card",
+          "Map",
+          "Flag",
+          "Fan",
+          "Umbrella",
+          "Glasses",
+          "Belt",
+          "Glove",
+          "Scarf",
+          "Button",
+          "Zipper",
+          "Needle",
+          "Thread",
+          "Scissors",
+          "Glue",
+          "Tape",
+          "Ruler",
+          "Eraser",
+          "Chalk",
+          "Basket",
+          "Bucket",
+          "Broom",
+          "Mop",
+          "Sponge",
+          "Oven",
+          "Fridge",
+          "Sink",
+          "Toaster",
+          "Kettle",
+          "Pot",
+          "Pan",
+          "Bowl",
+          "Jar",
+          "Lid",
+        ],
+        travel: [
+          "Suitcase",
+          "Passport",
+          "Ticket",
+          "Plane",
+          "Train",
+          "Boat",
+          "Bike",
+          "Car",
+          "Bus",
+          "Map",
+          "Hotel",
+          "Tent",
+          "Beach",
+          "Mountain",
+          "Forest",
+          "Road",
+          "Bridge",
+          "Tunnel",
+          "Airport",
+          "Station",
+          "Driver",
+          "Pilot",
+          "Tourist",
+          "Camera",
+          "Compass",
+          "Backpack",
+          "Island",
+          "City",
+          "Village",
+          "Border",
+        ],
+        places: [
+          "House",
+          "School",
+          "Park",
+          "Store",
+          "Bank",
+          "Farm",
+          "Zoo",
+          "Gym",
+          "Office",
+          "Church",
+          "Garden",
+          "Street",
+          "Kitchen",
+          "Bedroom",
+          "Garage",
+          "Attic",
+          "Basement",
+          "Roof",
+          "Yard",
+          "Library",
+          "Cinema",
+          "Bakery",
+          "Cafe",
+          "Forest",
+          "Desert",
+          "River",
+          "Lake",
+          "Hill",
+          "Cave",
+          "Factory",
+        ],
+        food: [
+          "Apple",
+          "Banana",
+          "Orange",
+          "Grape",
+          "Lemon",
+          "Mango",
+          "Berry",
+          "Melon",
+          "Peach",
+          "Pear",
+          "Bread",
+          "Cheese",
+          "Egg",
+          "Milk",
+          "Rice",
+          "Meat",
+          "Fish",
+          "Cake",
+          "Candy",
+          "Pizza",
+          "Soup",
+          "Salt",
+          "Sugar",
+          "Tea",
+          "Coffee",
+          "Juice",
+          "Water",
+          "Potato",
+          "Carrot",
+          "Onion",
+        ],
+      };
+
+      const PRESETS = {
+        arnas: {
+          color: "#c41e3a",
+          bg: "#2a0810",
+          img: "imageA.png",
+          label: "The Firestarter",
+        },
+        suchi: {
+          color: "#8b5cf6",
+          bg: "#1e0a35",
+          img: "imageS.png",
+          label: "The Trickster",
+        },
+        utsab: {
+          color: "#0891b2",
+          bg: "#081a2a",
+          img: "imageU.png",
+          label: "The Strategist",
+        },
+        ayntika: {
+          color: "#059669",
+          bg: "#081e14",
+          img: "image.png",
+          label: "The Intuitive",
+        },
+      };
+
+      const uid = () => Math.random().toString(36).slice(2, 9);
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      const shuffle = (arr) => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+      const partial = (w) => {
+        const c = [...w];
+        const hide = Math.ceil(c.length * 0.45);
+        const idx = shuffle([...Array(c.length).keys()]).slice(0, hide);
+        return c.map((ch, i) => (idx.includes(i) ? "_" : ch)).join("");
+      };
+      const presetKey = (name) => name.toLowerCase().trim();
+      const isPreset = (name) => !!PRESETS[presetKey(name)];
+      const presetOf = (name) => PRESETS[presetKey(name)];
+
+      const PHASES = {
+        REVEAL: "reveal",
+        TURNS: "turns",
+        VOTE: "vote",
+        RESULTS: "results",
+        GAMEOVER: "gameover",
+      };
+
+      function buildRound(players, config, chaosConfig, roundNum) {
+        const isChaos = config.mode === "chaos";
+        const active = {};
+        if (isChaos) {
+          Object.entries(chaosConfig).forEach(([k, v]) => {
+            if (!v.enabled) return;
+            active[k] =
+              v.mode === "manual"
+                ? v.value
+                : Math.random() > 0.42
+                  ? v.value
+                  : null;
+          });
+        }
+        // LINE ~360 (approx)
+
+        let impCount = config.numImposters || 1;
+
+        // 🎲 Fully random imposter count
+        // LINE ~355
+
+        if (isChaos && chaosConfig.randomImposterCount?.enabled) {
+          // 🎯 Manual mode
+          if (chaosConfig.randomImposterCount.mode === "manual") {
+            impCount = Math.min(
+              chaosConfig.randomImposterCount.value,
+              players.length,
+            );
+          }
+
+          // 🎲 Random mode
+          else {
+            impCount = Math.floor(Math.random() * (players.length + 1));
+          }
+        }
+
+        // 👥 Multiple imposters feature
+        else if (isChaos && active.multipleImposters) {
+          impCount = Math.min(+active.multipleImposters, players.length);
+        }
+
+        // Normal mode safety
+        else {
+          impCount = Math.min(
+            impCount,
+            Math.max(1, Math.floor(players.length * 0.45)),
+          );
+        }
+
+        let catKey = config.category || "common";
+        if (isChaos && active.categoryRandom)
+          catKey = pick(["common", "travel", "places", "food"]);
+        const pool =
+          catKey === "random"
+            ? [...WORDS.common, ...WORDS.travel, ...WORDS.places, ...WORDS.food]
+            : WORDS[catKey] || WORDS.common;
+        const word = pick(pool);
+
+        const shuffled = shuffle([...players]);
+        const imposterIds = new Set(
+          shuffled.slice(0, impCount).map((p) => p.id),
+        );
+        const roles = {};
+        players.forEach((p) => {
+          roles[p.id] = imposterIds.has(p.id) ? "imposter" : "civilian";
+        });
+
+        const impWordType =
+          isChaos && active.imposterWordType ? active.imposterWordType : "none";
+        const revealStyle =
+          isChaos && active.wordReveal ? active.wordReveal : "normal";
+        // New: civilian confusion feature
+        const civConfusion =
+          isChaos && active.civilianConfusion
+            ? active.civilianConfusion
+            : "none";
+
+        const playerWords = {};
+        players.forEach((p) => {
+          if (imposterIds.has(p.id)) {
+            if (impWordType === "real") playerWords[p.id] = word;
+            else if (impWordType === "fake")
+              playerWords[p.id] = pick(pool.filter((w) => w !== word)) || word;
+            else playerWords[p.id] = null;
+          } else {
+            // Apply civilian confusion (10% chance per civilian unless manual)
+            let confusionTriggered = false;
+            if (civConfusion !== "none") {
+              const chance = civConfusion === "force" ? 1 : 0.1;
+              confusionTriggered = Math.random() < chance;
+            }
+            if (confusionTriggered && civConfusion === "wrong_word") {
+              playerWords[p.id] = pick(pool.filter((w) => w !== word)) || word;
+            } else if (confusionTriggered && civConfusion === "no_word") {
+              playerWords[p.id] = null;
+            } else if (confusionTriggered) {
+              // mixed mode: randomly pick wrong word or no word
+              playerWords[p.id] =
+                Math.random() < 0.5
+                  ? pick(pool.filter((w) => w !== word)) || word
+                  : null;
+            } else if (revealStyle === "partial") {
+              playerWords[p.id] = partial(word);
+            } else if (revealStyle === "disguised") {
+              playerWords[p.id] = `The ${word.toLowerCase()} in question`;
+            } else {
+              playerWords[p.id] = word;
+            }
+          }
+        });
+
+        const turnOrder =
+          isChaos && active.turnOrder === "shuffled"
+            ? shuffle(players.map((p) => p.id))
+            : players.map((p) => p.id);
+        return {
+          round: roundNum,
+          totalRounds: config.totalRounds || 3,
+          word,
+          roles,
+          playerWords,
+          turnOrder,
+          imposterIds: [...imposterIds],
+          impWordType,
+          revealStyle,
+          civConfusion,
+          activeFeatures: active,
+          phase: PHASES.REVEAL,
+          revealIdx: 0,
+          turnIdx: 0,
+        };
+      }
+
+      function computeOutcome(players, gameState, votes) {
+        const tally = {};
+        players.forEach((p) => {
+          tally[p.id] = 0;
+        });
+        Object.values(votes).forEach((tid) => {
+          if (tally[tid] !== undefined) tally[tid]++;
+        });
+        const maxV = Math.max(...Object.values(tally), 0);
+        const eliminated = Object.keys(tally).filter(
+          (id) => tally[id] === maxV && maxV > 0,
+        );
+        const { imposterIds } = gameState;
+        const caught = imposterIds.filter((id) => eliminated.includes(id));
+        const escaped = imposterIds.filter((id) => !eliminated.includes(id));
+        const civWin = caught.length > 0;
+        const scoreDeltas = {};
+        players.forEach((p) => {
+          scoreDeltas[p.id] = 0;
+        });
+        if (civWin) {
+          players.forEach((p) => {
+            if (gameState.roles[p.id] === "civilian") scoreDeltas[p.id] += 2;
+          });
+          Object.entries(votes).forEach(([vId, tId]) => {
+            if (imposterIds.includes(tId)) scoreDeltas[vId] += 1;
+          });
+        } else {
+          imposterIds.forEach((id) => {
+            scoreDeltas[id] += 3;
+          });
+        }
+        return { tally, eliminated, caught, escaped, civWin, scoreDeltas };
+      }
+
+      /* ── SHARED COMPONENTS ── */
+      function Avatar({ name = "?", size = 48 }) {
+        const pr = presetOf(name);
+        const bg = pr
+          ? `radial-gradient(circle at 35% 35%,${pr.color},${pr.bg})`
+          : `radial-gradient(circle at 35% 35%,#444460,#1a1a28)`;
+        const border = pr
+          ? `2px solid ${pr.color}50`
+          : "2px solid rgba(255,255,255,0.08)";
+        return (
+          <div
+            style={{
+              width: size,
+              height: size,
+              borderRadius: "50%",
+              background: bg,
+              border,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: size * 0.42,
+              flexShrink: 0,
+              overflow: "hidden",
+              fontFamily: "sans-serif",
+            }}
+          >
+            {pr && pr.img ? (
+              <img
+                src={pr.img}
+                alt={name}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span>{name.charAt(0).toUpperCase()}</span>
+            )}
+          </div>
+        );
+      }
+
+      function Toggle({ on, onToggle }) {
+        return (
+          <div
+            className={`toggle-wrap ${on ? "on" : ""}`}
+            onClick={onToggle}
+            role="switch"
+            aria-checked={on}
+          />
+        );
+      }
+
+      function Btn({
+        children,
+        variant = "ghost",
+        className = "",
+        onClick,
+        disabled,
+        style = {},
+      }) {
+        return (
+          <button
+            className={`btn btn-${variant} ${className}`}
+            onClick={onClick}
+            disabled={disabled}
+            style={style}
+          >
+            {children}
+          </button>
+        );
+      }
+
+      function ProgressBar({ value, max, color = "red" }) {
+        const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+        return (
+          <div className="prog-bar">
+            <div
+              className="prog-fill"
+              style={{
+                width: `${pct}%`,
+                background:
+                  color === "gold"
+                    ? "linear-gradient(90deg,var(--gold),#ffe88a)"
+                    : undefined,
+              }}
+            />
+          </div>
+        );
+      }
+
+      /* ── EXIT MODAL ── */
+      function ExitModal({ onKeepPlaying, onRevealNow, onLeave }) {
+        return (
+          <div className="modal-overlay">
+            <div className="modal-box">
+              <div style={{ textAlign: "center", marginBottom: 20 }}>
+                <div style={{ fontSize: 42, marginBottom: 10 }}>⏸️</div>
+                <h3
+                  className="cinzel"
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "var(--txt)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Pause Game?
+                </h3>
+                <p style={{ fontSize: 13, color: "var(--txt3)" }}>
+                  What would you like to do?
+                </p>
+              </div>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                <Btn
+                  variant="gold"
+                  style={{ width: "100%", fontSize: 15, padding: "13px 20px" }}
+                  onClick={onKeepPlaying}
+                >
+                  ▶️ Keep Playing
+                </Btn>
+                <Btn
+                  variant="red"
+                  style={{ width: "100%", fontSize: 15, padding: "13px 20px" }}
+                  onClick={onRevealNow}
+                >
+                  🎭 Skip to Reveal Imposter
+                </Btn>
+                <Btn
+                  variant="danger"
+                  style={{ width: "100%", fontSize: 15, padding: "13px 20px" }}
+                  onClick={onLeave}
+                >
+                  🏠 Leave Game
+                </Btn>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── INSTANT REVEAL SCREEN ── */
+      function InstantRevealScreen({
+        gameState,
+        players,
+        scores,
+        onNextRound,
+        onEndGame,
+        onHome,
+        isLastRound,
+      }) {
+        const imposters = gameState.imposterIds
+          .map((id) => players.find((p) => p.id === id))
+          .filter(Boolean);
+        const civilians = players.filter(
+          (p) => gameState.roles[p.id] === "civilian",
+        );
+        return (
+          <div
+            className="screen bg-mesh"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "32px 24px",
+              minHeight: "100%",
+            }}
+          >
+            <div style={{ width: "100%", maxWidth: 340 }}>
+              <div
+                className="anim-pop"
+                style={{ textAlign: "center", marginBottom: 24 }}
+              >
+                <div style={{ fontSize: 56, marginBottom: 8 }}>🎭</div>
+                <h1
+                  className="cinzel gradient-text"
+                  style={{ fontSize: 26, fontWeight: 900, marginBottom: 6 }}
+                >
+                  REVEALED!
+                </h1>
+                <p style={{ color: "var(--txt2)", fontSize: 14 }}>
+                  The truth comes out
+                </p>
+              </div>
+              <div
+                className="anim-up"
+                style={{
+                  background: "rgba(212,175,55,0.08)",
+                  border: "1px solid rgba(212,175,55,0.35)",
+                  borderRadius: 14,
+                  padding: "14px 20px",
+                  textAlign: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(212,175,55,0.6)",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: 6,
+                  }}
+                >
+                  The Word Was
+                </p>
+                <p
+                  className="cinzel"
+                  style={{ fontSize: 28, fontWeight: 700, color: "var(--txt)" }}
+                >
+                  {gameState.word}
+                </p>
+              </div>
+              <div className="anim-up delay-1" style={{ marginBottom: 16 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--txt3)",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: 10,
+                  }}
+                >
+                  😈 The Imposter{imposters.length > 1 ? "s" : ""}
+                </p>
+                {imposters.map((p) => (
+                  <div
+                    key={p.id}
+                    className="card"
+                    style={{
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 8,
+                      borderColor: "rgba(196,30,58,0.4)",
+                      background: "rgba(196,30,58,0.07)",
+                    }}
+                  >
+                    <Avatar name={p.name} size={44} />
+                    <div style={{ flex: 1 }}>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          color: "#ff4466",
+                          fontSize: 16,
+                        }}
+                      >
+                        {p.name}
+                      </p>
+                      <p style={{ fontSize: 11, color: "var(--txt3)" }}>
+                        {gameState.impWordType === "none" && "Had no word"}
+                        {gameState.impWordType === "fake" && "Had a decoy word"}
+                        {gameState.impWordType === "real" &&
+                          "Had the real word"}
+                        {!["none", "fake", "real"].includes(
+                          gameState.impWordType,
+                        ) && "The Imposter"}
+                      </p>
+                    </div>
+                    <span className="badge badge-red">😈 Imposter</span>
+                  </div>
+                ))}
+              </div>
+              <div className="anim-up delay-2" style={{ marginBottom: 24 }}>
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--txt3)",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: 10,
+                  }}
+                >
+                  🧑‍💼 Civilians
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {civilians.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        background: "var(--bg2)",
+                        border: "1px solid var(--bdr)",
+                        borderRadius: 10,
+                        padding: "8px 12px",
+                      }}
+                    >
+                      <Avatar name={p.name} size={28} />
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "var(--txt)",
+                          fontSize: 14,
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div
+                className="anim-up delay-3"
+                style={{ display: "flex", gap: 10 }}
+              >
+                <Btn
+                  variant="ghost"
+                  style={{ flex: 1, padding: "13px 0" }}
+                  onClick={onHome}
+                >
+                  🏠 Home
+                </Btn>
+                <Btn
+                  variant={isLastRound ? "red" : "gold"}
+                  style={{ flex: 2, padding: "13px 0", fontSize: 15 }}
+                  onClick={isLastRound ? onEndGame : onNextRound}
+                >
+                  {isLastRound
+                    ? "🏆 Final Results"
+                    : `Round ${gameState.round + 1} →`}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── HOME ── */
+      function HomeScreen({ onStart, onSettings }) {
+        return (
+          <div
+            className="screen bg-mesh"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "40px 24px",
+              minHeight: "100%",
+            }}
+          >
+            <div style={{ textAlign: "center", maxWidth: 340 }}>
+              <div
+                className="anim-pop"
+                style={{ marginBottom: 24, display: "inline-block" }}
+              >
+                <div
+                  style={{
+                    width: 96,
+                    height: 96,
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle at 35% 30%,#c41e3a,#3d0610)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 52,
+                    margin: "0 auto",
+                    boxShadow:
+                      "0 0 50px rgba(196,30,58,0.4),0 0 100px rgba(196,30,58,0.1),inset 0 1px 0 rgba(255,255,255,0.15)",
+                    animation: "pulse 3s ease-in-out infinite",
+                    animationDelay: "1s",
+                    overflow: "hidden",
+                  }}
+                >
+                  <img
+                    src="detective.jpg"
+                    alt="Detective"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </div>
+              </div>
+              <h1
+                className="cinzel gradient-text anim-up"
+                style={{
+                  fontSize: 30,
+                  fontWeight: 900,
+                  lineHeight: 1.15,
+                  marginBottom: 8,
+                }}
+              >
+                FIND THE
+                <br />
+                IMPOSTER
+              </h1>
+              <p
+                className="anim-up delay-1"
+                style={{
+                  color: "var(--txt3)",
+                  fontSize: 12,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  marginBottom: 40,
+                }}
+              >
+                Social Deduction · 3–12 Players
+              </p>
+              <div
+                className="anim-up delay-2"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                  marginBottom: 32,
+                }}
+              >
+                <Btn
+                  variant="red"
+                  style={{
+                    fontSize: 18,
+                    padding: "16px 24px",
+                    borderRadius: 14,
+                  }}
+                  onClick={onStart}
+                >
+                  🎮 Start Game
+                </Btn>
+                <Btn variant="ghost" onClick={onSettings}>
+                  ⚙️ How to Play & Settings
+                </Btn>
+              </div>
+              <div
+                className="anim-up delay-3"
+                style={{ display: "flex", justifyContent: "center", gap: 8 }}
+              >
+                {["Arnas", "Suchi", "Utsab", "Ayntika"].map((n) => (
+                  <div
+                    key={n}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Avatar name={n} size={38} />
+                    <span style={{ fontSize: 10, color: "var(--txt3)" }}>
+                      {n}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── SETUP ── */
+      function SetupScreen({
+        players,
+        setPlayers,
+        config,
+        setConfig,
+        onBack,
+        onStartGame,
+        onChaosConfig,
+      }) {
+        const [newName, setNewName] = useState("");
+        const [editId, setEditId] = useState(null);
+        const [editVal, setEditVal] = useState("");
+        const [err, setErr] = useState("");
+
+        const addPlayer = () => {
+          const t = newName.trim();
+          if (!t) return;
+          if (players.some((p) => p.name.toLowerCase() === t.toLowerCase())) {
+            setErr("Name already exists");
+            return;
+          }
+          if (players.length >= 12) {
+            setErr("Maximum 12 players");
+            return;
+          }
+          setPlayers((p) => [...p, { id: uid(), name: t }]);
+          setNewName("");
+          setErr("");
+        };
+        const removePlayer = (id) =>
+          setPlayers((p) => p.filter((x) => x.id !== id));
+        const startEdit = (p) => {
+          setEditId(p.id);
+          setEditVal(p.name);
+        };
+        const saveEdit = () => {
+          const t = editVal.trim();
+          if (
+            t &&
+            !players.some(
+              (p) =>
+                p.id !== editId && p.name.toLowerCase() === t.toLowerCase(),
+            )
+          )
+            setPlayers((p) =>
+              p.map((x) => (x.id === editId ? { ...x, name: t } : x)),
+            );
+          setEditId(null);
+        };
+
+        const maxImp = Math.max(1, Math.floor(players.length * 0.4));
+        const safeNumImposters = Math.min(config.numImposters, maxImp);
+        const canStart = players.length >= 3;
+
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={onBack}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--txt2)",
+                  cursor: "pointer",
+                  fontSize: 22,
+                  padding: 4,
+                  lineHeight: 1,
+                }}
+              >
+                ←
+              </button>
+              <h2
+                className="cinzel"
+                style={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: "var(--txt)",
+                  flex: 1,
+                }}
+              >
+                Game Setup
+              </h2>
+              <span style={{ fontSize: 12, color: "var(--txt3)" }}>
+                {players.length}/12 players
+              </span>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "16px 20px",
+                paddingBottom: 100,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--txt3)",
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                Game Mode
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 10,
+                  marginBottom: 20,
+                }}
+              >
+                {[
+                  {
+                    id: "normal",
+                    icon: "⚖️",
+                    label: "Normal",
+                    sub: "Balanced & fair",
+                  },
+                  {
+                    id: "chaos",
+                    icon: "🌪️",
+                    label: "Chaotic",
+                    sub: "Controlled madness",
+                  },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setConfig((c) => ({ ...c, mode: m.id }))}
+                    style={{
+                      background:
+                        config.mode === m.id
+                          ? m.id === "chaos"
+                            ? "rgba(196,30,58,0.15)"
+                            : "rgba(212,175,55,0.12)"
+                          : "var(--bg2)",
+                      border: `1px solid ${config.mode === m.id ? (m.id === "chaos" ? "rgba(196,30,58,0.5)" : "rgba(212,175,55,0.4)") : "var(--bdr)"}`,
+                      borderRadius: 12,
+                      padding: "14px 12px",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>
+                      {m.icon}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--txt)",
+                        fontFamily: "Rajdhani,sans-serif",
+                      }}
+                    >
+                      {m.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--txt3)",
+                        marginTop: 2,
+                      }}
+                    >
+                      {m.sub}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {config.mode === "normal" && (
+                <div
+                  className="card anim-up"
+                  style={{ padding: 16, marginBottom: 16 }}
+                >
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--txt3)",
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Normal Settings
+                  </p>
+                  <div style={{ marginBottom: 16 }}>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        color: "var(--txt2)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Imposters{" "}
+                      <span style={{ color: "var(--red)", fontWeight: 600 }}>
+                        {safeNumImposters}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={maxImp}
+                      value={safeNumImposters}
+                      className="range-inp"
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          numImposters: +e.target.value,
+                        }))
+                      }
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 11,
+                        color: "var(--txt3)",
+                        marginTop: 4,
+                      }}
+                    >
+                      <span>1</span>
+                      <span>{maxImp}</span>
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        color: "var(--txt2)",
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Word Category
+                    </label>
+                    <select
+                      className="inp"
+                      value={config.category}
+                      onChange={(e) =>
+                        setConfig((c) => ({ ...c, category: e.target.value }))
+                      }
+                    >
+                      <option value="common">🏠 Common Objects</option>
+                      <option value="travel">✈️ Travel</option>
+                      <option value="places">📍 Places</option>
+                      <option value="food">🍎 Food & Fruit</option>
+                      <option value="random">🎲 Random Mix</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 13,
+                        color: "var(--txt2)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Rounds{" "}
+                      <span style={{ color: "var(--gold)", fontWeight: 600 }}>
+                        {config.totalRounds}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={config.totalRounds}
+                      className="range-inp"
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          totalRounds: +e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {config.mode === "chaos" && (
+                <>
+                  <button
+                    onClick={onChaosConfig}
+                    style={{
+                      width: "100%",
+                      background: "rgba(196,30,58,0.1)",
+                      border: "1px solid rgba(196,30,58,0.3)",
+                      borderRadius: 12,
+                      padding: "14px 16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ textAlign: "left" }}>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: "var(--txt)",
+                          fontFamily: "Rajdhani,sans-serif",
+                        }}
+                      >
+                        🌪️ Configure Chaos Features
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--txt3)",
+                          marginTop: 3,
+                        }}
+                      >
+                        Toggle imposters, words, turns & more
+                      </div>
+                    </div>
+                    <span style={{ color: "var(--red)", fontSize: 20 }}>→</span>
+                  </button>
+                  <div
+                    className="card"
+                    style={{ padding: 16, marginBottom: 16 }}
+                  >
+                    <label
+                      style={{
+                        fontSize: 13,
+                        color: "var(--txt2)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Rounds{" "}
+                      <span style={{ color: "var(--gold)", fontWeight: 600 }}>
+                        {config.totalRounds}
+                      </span>
+                    </label>
+                    <input
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={config.totalRounds}
+                      className="range-inp"
+                      onChange={(e) =>
+                        setConfig((c) => ({
+                          ...c,
+                          totalRounds: +e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="divider">
+                <span>Players</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                {players.map((p, i) => (
+                  <div
+                    key={p.id}
+                    className="card anim-up"
+                    style={{
+                      padding: "10px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      animationDelay: `${i * 0.04}s`,
+                    }}
+                  >
+                    <Avatar name={p.name} size={40} />
+                    {editId === p.id ? (
+                      <input
+                        className="inp"
+                        value={editVal}
+                        autoFocus
+                        style={{ flex: 1, padding: "8px 12px", fontSize: 15 }}
+                        onChange={(e) => setEditVal(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveEdit();
+                          if (e.key === "Escape") setEditId(null);
+                        }}
+                      />
+                    ) : (
+                      <div style={{ flex: 1 }}>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color: "var(--txt)",
+                            fontSize: 15,
+                          }}
+                        >
+                          {p.name}
+                        </span>
+                        {isPreset(p.name) && (
+                          <span
+                            className="badge badge-gold"
+                            style={{ marginLeft: 8, fontSize: 9 }}
+                          >
+                            preset
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {editId === p.id ? (
+                      <button
+                        onClick={saveEdit}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#34d399",
+                          fontSize: 18,
+                          padding: 4,
+                        }}
+                      >
+                        ✓
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startEdit(p)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "var(--txt3)",
+                          fontSize: 14,
+                          padding: 4,
+                        }}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button
+                      onClick={() => removePlayer(p.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--txt3)",
+                        fontSize: 14,
+                        padding: 4,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {players.length < 12 && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="inp"
+                    value={newName}
+                    placeholder="Add player name…"
+                    style={{ flex: 1 }}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      setErr("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+                  />
+                  <Btn
+                    variant="red"
+                    style={{ padding: "11px 18px", borderRadius: 10 }}
+                    onClick={addPlayer}
+                    disabled={!newName.trim()}
+                  >
+                    +
+                  </Btn>
+                </div>
+              )}
+              {err && (
+                <p style={{ color: "#ff5570", fontSize: 13, marginTop: 8 }}>
+                  {err}
+                </p>
+              )}
+              {players.length < 3 && (
+                <p style={{ color: "#d4af37", fontSize: 13, marginTop: 10 }}>
+                  ⚠️ Need at least 3 players to start
+                </p>
+              )}
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: 16,
+                background: "linear-gradient(to top,var(--bg) 70%,transparent)",
+                paddingBottom: 24,
+              }}
+            >
+              <Btn
+                variant={canStart ? "gold" : "ghost"}
+                style={{
+                  width: "100%",
+                  fontSize: 17,
+                  padding: "16px 24px",
+                  borderRadius: 14,
+                }}
+                onClick={onStartGame}
+                disabled={!canStart}
+              >
+                ▶ Begin Round 1 · {players.length} Players
+              </Btn>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── CHAOS CONFIG ── */
+      function ChaosConfigScreen({ chaosConfig, setChaosConfig, onBack }) {
+        const features = [
+          {
+            key: "multipleImposters",
+            icon: "👥",
+            label: "Multiple Imposters",
+            desc: "Allow 2–3 imposters per round",
+            values: [2, 3],
+            valLabel: (v) => `${v} imposters`,
+          },
+          {
+            key: "randomImposterCount",
+            icon: "🎲",
+            label: "Random Imposter Count",
+            desc: "Fully random imposters from 0 to player count",
+            // LINE ~1660
+
+            values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            valLabel: (v) => (v === 0 ? "0 Imposters" : `${v} Imposters`),
+          },
+          {
+            key: "imposterWordType",
+            icon: "🎭",
+            label: "Imposter Word",
+            desc: "What imposters see",
+            values: ["real", "fake", "none"],
+            valLabel: (v) =>
+              ({ real: "Same word", fake: "Fake word", none: "No word" })[v],
+          },
+          {
+            key: "civilianConfusion",
+            icon: "🌀",
+            label: "Civilian Confusion",
+            desc: "10% chance a civilian gets a wrong word or no word — sows doubt among innocents!",
+            values: ["wrong_word", "no_word", "mixed"],
+            valLabel: (v) =>
+              ({
+                wrong_word: "Wrong word",
+                no_word: "No word",
+                mixed: "Mixed (random)",
+              })[v],
+          },
+          {
+            key: "turnOrder",
+            icon: "🔄",
+            label: "Turn Order",
+            desc: "Order players describe the word",
+            values: ["normal", "shuffled"],
+            valLabel: (v) => v.charAt(0).toUpperCase() + v.slice(1),
+          },
+          {
+            key: "votingTieBreak",
+            icon: "⚖️",
+            label: "Tie Break",
+            desc: "How voting ties are resolved",
+            values: ["random", "revote"],
+            valLabel: (v) => ({ random: "Random pick", revote: "Re-vote" })[v],
+          },
+          {
+            key: "categoryRandom",
+            icon: "🎲",
+            label: "Random Category",
+            desc: "Randomise word category each round",
+            values: [true],
+            valLabel: () => "On",
+          },
+        ];
+        const set = (key, field, val) =>
+          setChaosConfig((p) => ({ ...p, [key]: { ...p[key], [field]: val } }));
+        // For civilianConfusion, "manual" mode with value = type; "random" = 10% chance mixed
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={onBack}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--txt2)",
+                  cursor: "pointer",
+                  fontSize: 22,
+                  padding: 4,
+                }}
+              >
+                ←
+              </button>
+              <h2
+                className="cinzel"
+                style={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: "var(--txt)",
+                  flex: 1,
+                }}
+              >
+                🌪️ Chaos Config
+              </h2>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "16px 20px",
+                paddingBottom: 30,
+              }}
+            >
+              <p
+                style={{
+                  color: "var(--txt2)",
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  marginBottom: 20,
+                }}
+              >
+                Each feature can be{" "}
+                <span style={{ color: "#e8c84a" }}>Random</span> (activated by
+                chance each round) or{" "}
+                <span style={{ color: "#ff6680" }}>Manual</span> (always
+                active).
+              </p>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {features.map((f) => {
+                  const s = chaosConfig[f.key] || {
+                    enabled: false,
+                    mode: "random",
+                    value: f.values[0],
+                  };
+                  return (
+                    <div
+                      key={f.key}
+                      className="card"
+                      style={{
+                        padding: 16,
+                        borderColor: s.enabled
+                          ? "rgba(196,30,58,0.35)"
+                          : "var(--bdr)",
+                        background: s.enabled
+                          ? "rgba(196,30,58,0.06)"
+                          : "var(--bg2)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                        }}
+                      >
+                        <span
+                          style={{ fontSize: 24, flexShrink: 0, marginTop: 2 }}
+                        >
+                          {f.icon}
+                        </span>
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                color: "var(--txt)",
+                                fontSize: 15,
+                              }}
+                            >
+                              {f.label}
+                            </span>
+                            <Toggle
+                              on={s.enabled}
+                              onToggle={() => set(f.key, "enabled", !s.enabled)}
+                            />
+                          </div>
+                          <p
+                            style={{
+                              fontSize: 12,
+                              color: "var(--txt3)",
+                              marginBottom: s.enabled ? 12 : 0,
+                            }}
+                          >
+                            {f.desc}
+                          </p>
+                          {s.enabled && (
+                            <div className="anim-up">
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 8,
+                                  marginBottom:
+                                    s.mode === "manual" && f.values.length > 1
+                                      ? 10
+                                      : 0,
+                                }}
+                              >
+                                {["random", "manual"].map((m) => (
+                                  <button
+                                    key={m}
+                                    onClick={() => set(f.key, "mode", m)}
+                                    style={{
+                                      padding: "6px 14px",
+                                      borderRadius: 20,
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      transition: "all 0.2s",
+                                      fontFamily: "Rajdhani,sans-serif",
+                                      background:
+                                        s.mode === m
+                                          ? m === "random"
+                                            ? "rgba(212,175,55,0.2)"
+                                            : "rgba(196,30,58,0.2)"
+                                          : "rgba(255,255,255,0.04)",
+                                      border: `1px solid ${s.mode === m ? (m === "random" ? "rgba(212,175,55,0.5)" : "rgba(196,30,58,0.5)") : "var(--bdr)"}`,
+                                      color:
+                                        s.mode === m
+                                          ? m === "random"
+                                            ? "var(--gold)"
+                                            : "var(--red)"
+                                          : "var(--txt3)",
+                                    }}
+                                  >
+                                    {m === "random" ? "🎲 Random" : "🎯 Manual"}
+                                  </button>
+                                ))}
+                              </div>
+                              {s.mode === "manual" && f.values.length > 1 && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: 6,
+                                  }}
+                                >
+                                  {f.values.map((v) => (
+                                    <button
+                                      key={String(v)}
+                                      onClick={() => set(f.key, "value", v)}
+                                      style={{
+                                        padding: "5px 12px",
+                                        borderRadius: 20,
+                                        fontSize: 12,
+                                        cursor: "pointer",
+                                        fontFamily: "Rajdhani,sans-serif",
+                                        fontWeight: 600,
+                                        background:
+                                          s.value === v
+                                            ? "rgba(196,30,58,0.25)"
+                                            : "rgba(255,255,255,0.04)",
+                                        border: `1px solid ${s.value === v ? "rgba(196,30,58,0.6)" : "var(--bdr)"}`,
+                                        color:
+                                          s.value === v
+                                            ? "#ff6680"
+                                            : "var(--txt3)",
+                                        transition: "all 0.2s",
+                                      }}
+                                    >
+                                      {f.valLabel(v)}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── REVEAL SCREEN ── */
+      function RevealScreen({ gameState, players, onNext, onExit }) {
+        const [shown, setShown] = useState(false);
+        const [showExitModal, setShowExitModal] = useState(false);
+        const currentId = gameState.turnOrder[gameState.revealIdx];
+        const player = players.find((p) => p.id === currentId);
+        const role = gameState.roles[currentId];
+        const word = gameState.playerWords[currentId];
+        const isImp = role === "imposter";
+        const isLast = gameState.revealIdx === gameState.turnOrder.length - 1;
+        const nextPlayer = !isLast
+          ? players.find(
+              (p) => p.id === gameState.turnOrder[gameState.revealIdx + 1],
+            )
+          : null;
+
+        // Detect if civilian got confusion word
+        const isCivConfused =
+          !isImp &&
+          gameState.civConfusion !== "none" &&
+          (word === null ||
+            (word !== gameState.word && !word?.startsWith("The ")));
+
+        useEffect(() => {
+          setShown(false);
+        }, [gameState.revealIdx]);
+
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "32px 24px",
+              minHeight: "100%",
+              background:
+                isImp && shown
+                  ? "radial-gradient(ellipse at 50% 0%,rgba(196,30,58,0.12) 0%,transparent 50%),var(--bg)"
+                  : "var(--bg)",
+            }}
+          >
+            {/* Exit button moved inline, no fixed positioning */}
+            {showExitModal && (
+              <ExitModal
+                onKeepPlaying={() => setShowExitModal(false)}
+                onRevealNow={() => onExit("reveal")}
+                onLeave={() => onExit("leave")}
+              />
+            )}
+
+            <div style={{ width: "100%", maxWidth: 340 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <div>
+                  <span className="badge badge-gray">
+                    Round {gameState.round} of {gameState.totalRounds}
+                  </span>
+                  <div
+                    style={{ fontSize: 12, color: "var(--txt3)", marginTop: 6 }}
+                  >
+                    Player {gameState.revealIdx + 1} of{" "}
+                    {gameState.turnOrder.length}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowExitModal(true)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid var(--bdr)",
+                    borderRadius: 10,
+                    color: "var(--txt3)",
+                    fontSize: 13,
+                    fontFamily: "Rajdhani,sans-serif",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "7px 14px",
+                    transition: "all 0.2s",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ✕ Exit
+                </button>
+              </div>
+              <ProgressBar
+                value={gameState.revealIdx}
+                max={gameState.turnOrder.length}
+              />
+              <div
+                style={{ textAlign: "center", marginTop: 20, marginBottom: 24 }}
+              >
+                <div
+                  style={{
+                    marginBottom: 12,
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Avatar name={player?.name || "?"} size={72} />
+                </div>
+                <h2
+                  className="cinzel"
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "var(--txt)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {player?.name}
+                </h2>
+                <p style={{ fontSize: 13, color: "var(--txt3)" }}>
+                  Your turn to see the assignment
+                </p>
+              </div>
+              {!shown ? (
+                <div
+                  className="reveal-card card anim-pop"
+                  onClick={() => setShown(true)}
+                  style={{
+                    cursor: "pointer",
+                    padding: "40px 24px",
+                    textAlign: "center",
+                    border: "1px solid var(--bdr2)",
+                  }}
+                >
+                  <div style={{ fontSize: 52, marginBottom: 12 }}>👁️</div>
+                  <p
+                    style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: "var(--txt)",
+                    }}
+                  >
+                    Tap to reveal your role
+                  </p>
+                  <p
+                    style={{ fontSize: 12, color: "var(--txt3)", marginTop: 6 }}
+                  >
+                    Make sure others aren't watching
+                  </p>
+                </div>
+              ) : (
+                <div
+                  className="reveal-card anim-pop"
+                  style={{
+                    background: isImp
+                      ? "radial-gradient(circle at 30% 30%,rgba(196,30,58,0.3),rgba(61,6,16,0.15))"
+                      : "radial-gradient(circle at 30% 30%,rgba(212,175,55,0.22),rgba(61,46,8,0.1))",
+                    border: `1px solid ${isImp ? "rgba(196,30,58,0.55)" : "rgba(212,175,55,0.4)"}`,
+                    minHeight: 170,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 44, marginBottom: 8 }}>
+                    {isImp ? "😈" : "🧑‍💼"}
+                  </div>
+                  <div
+                    className="cinzel"
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 900,
+                      color: isImp ? "#ff4466" : "var(--gold)",
+                      marginBottom: 16,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {isImp ? "IMPOSTER" : "CIVILIAN"}
+                  </div>
+                  {word ? (
+                    <>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: isImp
+                            ? "rgba(255,100,120,0.6)"
+                            : "rgba(212,175,55,0.6)",
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {isImp && gameState.impWordType === "fake"
+                          ? "Decoy Word"
+                          : isCivConfused
+                            ? "⚠️ Your Word"
+                            : "The Word"}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 32,
+                          fontWeight: 700,
+                          color: "var(--txt)",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {word}
+                      </p>
+                      {isImp && gameState.impWordType === "fake" && (
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "#ff6680",
+                            marginTop: 10,
+                            padding: "4px 12px",
+                            background: "rgba(196,30,58,0.15)",
+                            borderRadius: 20,
+                          }}
+                        >
+                          ⚠️ Civilians have a different word
+                        </p>
+                      )}
+                      {isCivConfused && (
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "#f59e0b",
+                            marginTop: 10,
+                            padding: "4px 12px",
+                            background: "rgba(245,158,11,0.1)",
+                            borderRadius: 20,
+                          }}
+                        >
+                          🌀 Chaos! This may not be the real word
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: "center" }}>
+                      <p
+                        style={{
+                          fontSize: 14,
+                          color: isImp
+                            ? "rgba(255,100,120,0.8)"
+                            : "rgba(245,158,11,0.8)",
+                          fontStyle: "italic",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {isImp
+                          ? "You have no word."
+                          : "🌀 You have no word — chaos!"}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: isImp
+                            ? "rgba(255,80,100,0.6)"
+                            : "rgba(245,158,11,0.6)",
+                        }}
+                      >
+                        {isImp
+                          ? "Listen carefully — improvise!"
+                          : "Stay calm and bluff your way through!"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {shown && (
+                <div className="anim-up" style={{ marginTop: 16 }}>
+                  <Btn
+                    variant={isLast ? "gold" : "red"}
+                    style={{
+                      width: "100%",
+                      fontSize: 16,
+                      padding: "15px 20px",
+                      borderRadius: 13,
+                    }}
+                    onClick={() => {
+                      setShown(false);
+                      onNext();
+                    }}
+                  >
+                    {isLast
+                      ? "✓ Everyone is ready — Let's go!"
+                      : `→ Pass to ${nextPlayer?.name}`}
+                  </Btn>
+                  <p
+                    style={{
+                      textAlign: "center",
+                      fontSize: 11,
+                      color: "var(--txt3)",
+                      marginTop: 10,
+                    }}
+                  >
+                    Remember your role — don't reveal it!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      /* ── TURNS SCREEN ── */
+      function TurnsScreen({ gameState, players, onNext, onEnd, onExit }) {
+        const [showExitModal, setShowExitModal] = useState(false);
+        const currentId = gameState.turnOrder[gameState.turnIdx];
+        const current = players.find((p) => p.id === currentId);
+        const isLast = gameState.turnIdx === gameState.turnOrder.length - 1;
+        const nextPlayer = !isLast
+          ? players.find(
+              (p) => p.id === gameState.turnOrder[gameState.turnIdx + 1],
+            )
+          : null;
+
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            {showExitModal && (
+              <ExitModal
+                onKeepPlaying={() => setShowExitModal(false)}
+                onRevealNow={() => onExit("reveal")}
+                onLeave={() => onExit("leave")}
+              />
+            )}
+
+            <div
+              style={{
+                padding: "14px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span className="badge badge-gray">
+                  Round {gameState.round}/{gameState.totalRounds}
+                </span>
+                <span className="badge badge-gold">Description Phase</span>
+                <button
+                  onClick={() => setShowExitModal(true)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid var(--bdr)",
+                    borderRadius: 8,
+                    color: "var(--txt3)",
+                    fontSize: 12,
+                    fontFamily: "Rajdhani,sans-serif",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "5px 10px",
+                  }}
+                >
+                  ✕ Exit
+                </button>
+              </div>
+              <ProgressBar
+                value={gameState.turnIdx + 1}
+                max={gameState.turnOrder.length}
+                color="gold"
+              />
+            </div>
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "24px 20px",
+              }}
+            >
+              <div style={{ maxWidth: 340, width: "100%" }}>
+                <p
+                  style={{
+                    textAlign: "center",
+                    fontSize: 11,
+                    color: "var(--txt3)",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    marginBottom: 20,
+                  }}
+                >
+                  Now Describing — {gameState.turnIdx + 1}/
+                  {gameState.turnOrder.length}
+                </p>
+                <div
+                  className="card-glow-gold anim-pop"
+                  style={{
+                    borderRadius: 16,
+                    padding: "28px 20px",
+                    textAlign: "center",
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Avatar name={current?.name || "?"} size={80} />
+                  </div>
+                  <h2
+                    className="cinzel"
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 700,
+                      color: "var(--txt)",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {current?.name}
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "var(--txt2)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Describe the word without saying it directly.
+                    <br />
+                    <span style={{ color: "var(--txt3)", fontSize: 12 }}>
+                      No synonyms or direct descriptions!
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--txt3)",
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Turn Order
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      overflowX: "auto",
+                      paddingBottom: 4,
+                    }}
+                  >
+                    {gameState.turnOrder.map((pid, i) => {
+                      const p = players.find((x) => x.id === pid);
+                      const status =
+                        i < gameState.turnIdx
+                          ? "done"
+                          : i === gameState.turnIdx
+                            ? "active"
+                            : "waiting";
+                      return (
+                        <div
+                          key={pid}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 6,
+                            flexShrink: 0,
+                            opacity: status === "waiting" ? 0.4 : 1,
+                          }}
+                        >
+                          <div style={{ position: "relative" }}>
+                            <Avatar name={p?.name || "?"} size={38} />
+                            {status === "done" && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: -2,
+                                  right: -2,
+                                  width: 14,
+                                  height: 14,
+                                  borderRadius: "50%",
+                                  background: "#10b981",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 8,
+                                  color: "#fff",
+                                }}
+                              >
+                                ✓
+                              </div>
+                            )}
+                            {status === "active" && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: -3,
+                                  right: -3,
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: "50%",
+                                  background: "var(--red)",
+                                  animation: "pulse 1.5s ease-in-out infinite",
+                                }}
+                              />
+                            )}
+                          </div>
+                          <span style={{ fontSize: 10, color: "var(--txt3)" }}>
+                            {p?.name?.slice(0, 6)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom action buttons — reveal imposter alongside next turn */}
+            <div
+              style={{
+                padding: "16px 20px",
+                paddingBottom: 28,
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              {isLast ? (
+                <Btn
+                  variant="red"
+                  style={{
+                    width: "100%",
+                    fontSize: 17,
+                    padding: "16px 20px",
+                    borderRadius: 14,
+                  }}
+                  onClick={onEnd}
+                >
+                  🗳️ All Described — Start Voting
+                </Btn>
+              ) : (
+                <Btn
+                  variant="ghost"
+                  style={{
+                    width: "100%",
+                    fontSize: 16,
+                    padding: "15px 20px",
+                    borderRadius: 14,
+                  }}
+                  onClick={onNext}
+                >
+                  → {nextPlayer?.name}'s Turn
+                </Btn>
+              )}
+              <Btn
+                variant="danger"
+                style={{
+                  width: "100%",
+                  fontSize: 14,
+                  padding: "11px 20px",
+                  borderRadius: 12,
+                }}
+                onClick={() => onExit("reveal")}
+              >
+                🎭 Skip to Reveal Imposter
+              </Btn>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── VOTE SCREEN ── */
+      function VoteScreen({ gameState, players, onVote, voterIdx, onExit }) {
+        const [selected, setSelected] = useState(null);
+        const [locked, setLocked] = useState(false);
+        const [showExitModal, setShowExitModal] = useState(false);
+        const voterId = gameState.turnOrder[voterIdx];
+        const voter = players.find((p) => p.id === voterId);
+        const isLast = voterIdx === gameState.turnOrder.length - 1;
+        const nextVoter = !isLast
+          ? players.find((p) => p.id === gameState.turnOrder[voterIdx + 1])
+          : null;
+        const candidates = players.filter((p) => p.id !== voterId);
+        useEffect(() => {
+          setSelected(null);
+          setLocked(false);
+        }, [voterIdx]);
+        const handleLock = () => {
+          if (!selected) return;
+          setLocked(true);
+          setTimeout(() => onVote(voterId, selected), 700);
+        };
+
+        if (locked)
+          return (
+            <div
+              className="screen"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "var(--bg)",
+              }}
+            >
+              <div className="anim-pop" style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 60, marginBottom: 16 }}>🔒</div>
+                <h2
+                  className="cinzel"
+                  style={{ fontSize: 20, color: "var(--txt)", marginBottom: 8 }}
+                >
+                  Vote Locked In
+                </h2>
+                <p style={{ color: "var(--txt3)", fontSize: 14 }}>
+                  {isLast
+                    ? "Tallying all votes..."
+                    : `Pass device to ${nextVoter?.name}`}
+                </p>
+              </div>
+            </div>
+          );
+
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            {showExitModal && (
+              <ExitModal
+                onKeepPlaying={() => setShowExitModal(false)}
+                onRevealNow={() => onExit("reveal")}
+                onLeave={() => onExit("leave")}
+              />
+            )}
+
+            <div
+              style={{
+                padding: "14px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                }}
+              >
+                <span className="badge badge-gray">
+                  Voter {voterIdx + 1}/{gameState.turnOrder.length}
+                </span>
+                <span className="badge badge-red">Voting Phase</span>
+                <button
+                  onClick={() => setShowExitModal(true)}
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid var(--bdr)",
+                    borderRadius: 8,
+                    color: "var(--txt3)",
+                    fontSize: 12,
+                    fontFamily: "Rajdhani,sans-serif",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "5px 10px",
+                  }}
+                >
+                  ✕ Exit
+                </button>
+              </div>
+              <ProgressBar
+                value={voterIdx}
+                max={gameState.turnOrder.length}
+                color="red"
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
+              <div style={{ maxWidth: 340, margin: "0 auto" }}>
+                <div
+                  style={{ textAlign: "center", marginBottom: 24 }}
+                  className="anim-up"
+                >
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Avatar name={voter?.name || "?"} size={60} />
+                  </div>
+                  <h3
+                    className="cinzel"
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: "var(--txt)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {voter?.name}
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--txt2)" }}>
+                    Who do you think is the imposter?
+                  </p>
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  {candidates.map((p, i) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelected(p.id)}
+                      className={`player-tap ${selected === p.id ? "selected" : ""} anim-up`}
+                      style={{
+                        background:
+                          selected === p.id
+                            ? "rgba(196,30,58,0.18)"
+                            : "var(--bg2)",
+                        border: `1px solid ${selected === p.id ? "rgba(196,30,58,0.55)" : "var(--bdr)"}`,
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        transition: "all 0.2s",
+                        animationDelay: `${i * 0.04}s`,
+                      }}
+                    >
+                      <Avatar name={p.name} size={44} />
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: "left",
+                          fontWeight: 600,
+                          color: "var(--txt)",
+                          fontSize: 16,
+                          fontFamily: "Rajdhani,sans-serif",
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                      <div
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          background:
+                            selected === p.id
+                              ? "var(--red)"
+                              : "rgba(255,255,255,0.05)",
+                          border: `1px solid ${selected === p.id ? "var(--red)" : "var(--bdr2)"}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {selected === p.id && (
+                          <span style={{ fontSize: 11, color: "#fff" }}>✓</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div
+              style={{ padding: "16px 20px", paddingBottom: 28, flexShrink: 0 }}
+            >
+              <Btn
+                variant={selected ? "red" : "ghost"}
+                style={{
+                  width: "100%",
+                  fontSize: 16,
+                  padding: "15px 20px",
+                  borderRadius: 14,
+                }}
+                onClick={handleLock}
+                disabled={!selected}
+              >
+                {selected
+                  ? `🗳️ Vote for ${players.find((p) => p.id === selected)?.name}`
+                  : "Select a suspect first"}
+              </Btn>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── RESULTS SCREEN ── */
+      function ResultsScreen({
+        gameState,
+        players,
+        votes,
+        scores,
+        isLastRound,
+        onNextRound,
+        onEndGame,
+      }) {
+        const outcome = computeOutcome(players, gameState, votes);
+        const { tally, caught, civWin, scoreDeltas } = outcome;
+        const [tab, setTab] = useState("outcome");
+        const sortedByVotes = [...players].sort(
+          (a, b) => (tally[b.id] || 0) - (tally[a.id] || 0),
+        );
+        const sortedByScore = [...players].sort(
+          (a, b) => (scores[b.id] || 0) - (scores[a.id] || 0),
+        );
+
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            <div
+              style={{
+                padding: "14px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                flexShrink: 0,
+              }}
+            >
+              <h2
+                className="cinzel"
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "var(--txt)",
+                  textAlign: "center",
+                }}
+              >
+                Round {gameState.round} Results
+              </h2>
+            </div>
+            <div
+              className={`anim-pop ${civWin ? "card-glow-gold" : "card-glow-red"}`}
+              style={{
+                margin: "16px 20px",
+                borderRadius: 18,
+                padding: "24px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 54, marginBottom: 8 }}>
+                {civWin ? "🕵️" : "😈"}
+              </div>
+              <h3
+                className="cinzel"
+                style={{
+                  fontSize: 24,
+                  fontWeight: 900,
+                  color: civWin ? "var(--gold)" : "#ff4466",
+                  marginBottom: 8,
+                }}
+              >
+                {civWin ? "CIVILIANS WIN!" : "IMPOSTERS WIN!"}
+              </h3>
+              <p
+                style={{ color: "var(--txt2)", fontSize: 14, marginBottom: 16 }}
+              >
+                {civWin
+                  ? `${caught.map((id) => players.find((p) => p.id === id)?.name).join(", ")} caught red-handed!`
+                  : "The imposters blended in perfectly."}
+              </p>
+              <div
+                style={{
+                  background: "rgba(0,0,0,0.3)",
+                  borderRadius: 12,
+                  padding: "10px 16px",
+                  display: "inline-block",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--txt3)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    marginBottom: 4,
+                  }}
+                >
+                  The Word Was
+                </p>
+                <p
+                  className="cinzel"
+                  style={{ fontSize: 26, fontWeight: 700, color: "var(--txt)" }}
+                >
+                  {gameState.word}
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 0,
+                padding: "0 20px",
+                marginBottom: 12,
+                flexShrink: 0,
+              }}
+            >
+              {[
+                ["outcome", "Imposters"],
+                ["votes", "Votes"],
+                ["scores", "Scores"],
+              ].map(([t, l]) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    border: "none",
+                    borderBottom: `2px solid ${tab === t ? "var(--red)" : "transparent"}`,
+                    background: "none",
+                    color: tab === t ? "var(--txt)" : "var(--txt3)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "Rajdhani,sans-serif",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "0 20px",
+                paddingBottom: 100,
+              }}
+            >
+              {tab === "outcome" && (
+                <div className="anim-in">
+                  {gameState.imposterIds.map((id) => {
+                    const p = players.find((x) => x.id === id);
+                    const wasCaught = caught.includes(id);
+                    return (
+                      <div
+                        key={id}
+                        className="card"
+                        style={{
+                          padding: "12px 14px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <Avatar name={p?.name || "?"} size={48} />
+                        <div style={{ flex: 1 }}>
+                          <p
+                            style={{
+                              fontWeight: 600,
+                              color: "var(--txt)",
+                              fontSize: 15,
+                            }}
+                          >
+                            {p?.name}
+                          </p>
+                          <p style={{ fontSize: 12, color: "var(--txt3)" }}>
+                            {gameState.impWordType === "none" && "Had no word"}
+                            {gameState.impWordType === "fake" &&
+                              "Had decoy word"}
+                            {gameState.impWordType === "real" &&
+                              "Had the real word"}
+                            {!["none", "fake", "real"].includes(
+                              gameState.impWordType,
+                            ) && "Imposter"}
+                          </p>
+                        </div>
+                        <span
+                          className={`badge ${wasCaught ? "badge-red" : "badge-gold"}`}
+                        >
+                          {wasCaught ? "🔒 Caught" : "🏃 Escaped"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {tab === "votes" && (
+                <div
+                  className="anim-in"
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  {sortedByVotes.map((p) => {
+                    const v = tally[p.id] || 0;
+                    const pct =
+                      players.length > 1 ? (v / (players.length - 1)) * 100 : 0;
+                    const isImp = gameState.roles[p.id] === "imposter";
+                    return (
+                      <div
+                        key={p.id}
+                        className="card"
+                        style={{ padding: "10px 14px" }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <Avatar name={p.name} size={34} />
+                          <span
+                            style={{
+                              flex: 1,
+                              fontWeight: 600,
+                              color: "var(--txt)",
+                              fontSize: 14,
+                            }}
+                          >
+                            {p.name}
+                          </span>
+                          {isImp && (
+                            <span
+                              className="badge badge-red"
+                              style={{ fontSize: 9 }}
+                            >
+                              imposter
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 16,
+                              color:
+                                v === Math.max(...Object.values(tally))
+                                  ? "var(--red)"
+                                  : "var(--txt2)",
+                            }}
+                          >
+                            {v}
+                          </span>
+                        </div>
+                        <div className="prog-bar">
+                          <div
+                            className="prog-fill"
+                            style={{
+                              width: `${pct}%`,
+                              background: isImp
+                                ? "linear-gradient(90deg,var(--red),#ff4466)"
+                                : "linear-gradient(90deg,#374151,#6b7280)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {tab === "scores" && (
+                <div className="anim-in">
+                  <div className="card">
+                    {sortedByScore.map((p, i) => {
+                      const delta = scoreDeltas[p.id] || 0;
+                      return (
+                        <div
+                          key={p.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "12px 14px",
+                            borderBottom:
+                              i < sortedByScore.length - 1
+                                ? "1px solid var(--bdr)"
+                                : "none",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 18,
+                              width: 28,
+                              textAlign: "center",
+                            }}
+                          >
+                            {["🥇", "🥈", "🥉"][i] || `${i + 1}`}
+                          </span>
+                          <Avatar name={p.name} size={36} />
+                          <span
+                            style={{
+                              flex: 1,
+                              fontWeight: 600,
+                              color: "var(--txt)",
+                              fontSize: 15,
+                            }}
+                          >
+                            {p.name}
+                          </span>
+                          {delta > 0 && (
+                            <span style={{ fontSize: 12, color: "#34d399" }}>
+                              +{delta}
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 18,
+                              color: i === 0 ? "var(--gold)" : "var(--txt2)",
+                            }}
+                          >
+                            {scores[p.id] || 0}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "16px 20px",
+                paddingBottom: 24,
+                background: "linear-gradient(to top,var(--bg) 70%,transparent)",
+                display: "flex",
+                gap: 10,
+              }}
+            >
+              <Btn
+                variant="ghost"
+                style={{ flex: 1, padding: "14px 0" }}
+                onClick={onEndGame}
+              >
+                End Game
+              </Btn>
+              <Btn
+                variant={isLastRound ? "red" : "gold"}
+                style={{ flex: 2, padding: "14px 0", fontSize: 16 }}
+                onClick={isLastRound ? onEndGame : onNextRound}
+              >
+                {isLastRound
+                  ? "🏆 Final Results"
+                  : `Round ${gameState.round + 1} →`}
+              </Btn>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── GAME OVER ── */
+      function GameOverScreen({ players, scores, onPlayAgain, onHome }) {
+        const sorted = [...players].sort(
+          (a, b) => (scores[b.id] || 0) - (scores[a.id] || 0),
+        );
+        const winner = sorted[0];
+        const medals = ["🥇", "🥈", "🥉"];
+        return (
+          <div
+            className="screen bg-mesh"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "32px 24px",
+              minHeight: "100%",
+            }}
+          >
+            <div style={{ width: "100%", maxWidth: 340 }}>
+              <div
+                className="anim-pop"
+                style={{ textAlign: "center", marginBottom: 28 }}
+              >
+                <div style={{ fontSize: 64, marginBottom: 12 }}>🏆</div>
+                <h1
+                  className="cinzel gradient-text"
+                  style={{
+                    fontSize: 30,
+                    fontWeight: 900,
+                    marginBottom: 8,
+                    display: "block",
+                  }}
+                >
+                  GAME OVER
+                </h1>
+                <p style={{ color: "var(--txt2)", fontSize: 16 }}>
+                  {winner?.name} takes the crown!
+                </p>
+              </div>
+              <div
+                className="card"
+                style={{ padding: 0, overflow: "hidden", marginBottom: 20 }}
+              >
+                {sorted.map((p, i) => (
+                  <div
+                    key={p.id}
+                    className="anim-up"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderBottom:
+                        i < sorted.length - 1 ? "1px solid var(--bdr)" : "none",
+                      background:
+                        i === 0 ? "rgba(212,175,55,0.07)" : "transparent",
+                      animationDelay: `${i * 0.06}s`,
+                    }}
+                  >
+                    <span
+                      style={{ fontSize: 22, width: 28, textAlign: "center" }}
+                    >
+                      {medals[i] || `${i + 1}.`}
+                    </span>
+                    <Avatar name={p.name} size={44} />
+                    <span
+                      style={{
+                        flex: 1,
+                        fontWeight: 600,
+                        fontSize: 16,
+                        color: "var(--txt)",
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 22,
+                        color: i === 0 ? "var(--gold)" : "var(--txt2)",
+                      }}
+                    >
+                      {scores[p.id] || 0}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Btn variant="ghost" style={{ flex: 1 }} onClick={onHome}>
+                  🏠 Home
+                </Btn>
+                <Btn
+                  variant="gold"
+                  style={{ flex: 2, fontSize: 16, padding: "15px 20px" }}
+                  onClick={onPlayAgain}
+                >
+                  🔄 Play Again
+                </Btn>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── SETTINGS ── */
+      function SettingsScreen({ onBack }) {
+        const sections = [
+          {
+            icon: "🎮",
+            title: "Objective",
+            body: "One or more players are secretly assigned the role of Imposter. All others are Civilians who know a secret word. Imposters must blend in without knowing it.",
+          },
+          {
+            icon: "🔄",
+            title: "Round Flow",
+            body: "1. Each player privately sees their role and word.\n2. Players take turns describing the word without saying it directly.\n3. Everyone votes on who they think is the imposter.\n4. Votes are revealed and roles are exposed.",
+          },
+          {
+            icon: "⚖️",
+            title: "Normal Mode",
+            body: "One imposter (customizable). Choose a word category. Clean, competitive deduction — great for new players.",
+          },
+          {
+            icon: "🌪️",
+            title: "Chaotic Mode",
+            body: "Layer on chaos features: multiple imposters, decoy words, shuffled turns, partial reveals, civilian confusion and more.",
+          },
+          {
+            icon: "🏆",
+            title: "Scoring",
+            body: "Civilians: +2 pts each for catching imposters. Correct voter: +1 bonus. Imposters: +3 pts each for surviving the vote.",
+          },
+          {
+            icon: "💡",
+            title: "Pro Tips",
+            body: "• Imposters: listen to descriptions, then mirror the language confidently.\n• Civilians: vague clues expose imposters — they'll guess wrong.\n• Watch for hesitation and generic descriptions!",
+          },
+        ];
+        return (
+          <div
+            className="screen"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--bdr)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={onBack}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--txt2)",
+                  cursor: "pointer",
+                  fontSize: 22,
+                  padding: 4,
+                }}
+              >
+                ←
+              </button>
+              <h2
+                className="cinzel"
+                style={{ fontSize: 17, fontWeight: 700, color: "var(--txt)" }}
+              >
+                How to Play
+              </h2>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "16px 20px",
+                paddingBottom: 30,
+              }}
+            >
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {sections.map((s, i) => (
+                  <div
+                    key={s.title}
+                    className="card anim-up"
+                    style={{ padding: 16, animationDelay: `${i * 0.05}s` }}
+                  >
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <span style={{ fontSize: 24, flexShrink: 0 }}>
+                        {s.icon}
+                      </span>
+                      <div>
+                        <h3
+                          style={{
+                            fontWeight: 600,
+                            color: "var(--txt)",
+                            marginBottom: 6,
+                            fontSize: 15,
+                          }}
+                        >
+                          {s.title}
+                        </h3>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            color: "var(--txt2)",
+                            lineHeight: 1.65,
+                            whiteSpace: "pre-line",
+                          }}
+                        >
+                          {s.body}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── ROOT APP ── */
+      function App() {
+        useEffect(() => {
+          if (document.getElementById("fti-css")) return;
+          const el = document.createElement("style");
+          el.id = "fti-css";
+          el.textContent = CSS;
+          document.head.appendChild(el);
+        }, []);
+
+        const [page, setPage] = useState("home");
+        const [players, setPlayers] = useState([
+          { id: uid(), name: "Arnas" },
+          { id: uid(), name: "Suchi" },
+          { id: uid(), name: "Utsab" },
+          { id: uid(), name: "Ayntika" },
+        ]);
+        const [config, setConfig] = useState({
+          mode: "normal",
+          numImposters: 1,
+          category: "common",
+          totalRounds: 3,
+        });
+        const [chaosConfig, setChaosConfig] = useState({
+          multipleImposters: { enabled: false, mode: "random", value: 2 },
+          imposterWordType: { enabled: false, mode: "random", value: "fake" },
+          civilianConfusion: { enabled: false, mode: "random", value: "mixed" },
+          wordReveal: { enabled: false, mode: "random", value: "partial" },
+          turnOrder: { enabled: false, mode: "random", value: "shuffled" },
+          votingTieBreak: { enabled: false, mode: "random", value: "random" },
+          categoryRandom: { enabled: false, mode: "random", value: true },
+        });
+        const [gameState, setGameState] = useState(null);
+        const [scores, setScores] = useState({});
+        const [votes, setVotes] = useState({});
+        const [voterIdx, setVoterIdx] = useState(0);
+
+        const startGame = useCallback(() => {
+          const init = {};
+          players.forEach((p) => {
+            init[p.id] = 0;
+          });
+          setScores(init);
+          setVotes({});
+          setVoterIdx(0);
+          const maxImp = Math.max(1, Math.floor(players.length * 0.4));
+          const safeConfig = {
+            ...config,
+            numImposters: Math.min(config.numImposters, maxImp),
+          };
+          const round = buildRound(players, safeConfig, chaosConfig, 1);
+          setGameState(round);
+          setPage("game");
+        }, [players, config, chaosConfig]);
+
+        const advanceReveal = useCallback(() => {
+          setGameState((prev) => {
+            if (!prev) return prev;
+            const nextIdx = prev.revealIdx + 1;
+            if (nextIdx >= prev.turnOrder.length)
+              return { ...prev, phase: PHASES.TURNS, turnIdx: 0 };
+            return { ...prev, revealIdx: nextIdx };
+          });
+        }, []);
+
+        const nextTurn = useCallback(() => {
+          setGameState((prev) => ({ ...prev, turnIdx: prev.turnIdx + 1 }));
+        }, []);
+        const endTurns = useCallback(() => {
+          setVotes({});
+          setVoterIdx(0);
+          setGameState((prev) => ({ ...prev, phase: PHASES.VOTE }));
+        }, []);
+
+        const handleVote = useCallback(
+          (voterId, targetId) => {
+            setVotes((prev) => {
+              const newVotes = { ...prev, [voterId]: targetId };
+              const nextIdx = voterIdx + 1;
+              if (nextIdx >= (gameState?.turnOrder?.length || 0)) {
+                const { scoreDeltas } = computeOutcome(
+                  players,
+                  gameState,
+                  newVotes,
+                );
+                setTimeout(() => {
+                  setScores((s) => {
+                    const u = { ...s };
+                    Object.entries(scoreDeltas).forEach(([id, d]) => {
+                      u[id] = (u[id] || 0) + d;
+                    });
+                    return u;
+                  });
+                  setGameState((g) =>
+                    g ? { ...g, phase: PHASES.RESULTS } : g,
+                  );
+                }, 0);
+              } else {
+                setTimeout(() => setVoterIdx(nextIdx), 0);
+              }
+              return newVotes;
+            });
+          },
+          [voterIdx, gameState, players],
+        );
+
+        const nextRound = useCallback(() => {
+          const maxImp = Math.max(1, Math.floor(players.length * 0.4));
+          const safeConfig = {
+            ...config,
+            numImposters: Math.min(config.numImposters, maxImp),
+          };
+          const round = buildRound(
+            players,
+            safeConfig,
+            chaosConfig,
+            (gameState?.round || 0) + 1,
+          );
+          setVotes({});
+          setVoterIdx(0);
+          setGameState(round);
+        }, [gameState, players, config, chaosConfig]);
+
+        const endGame = useCallback(() => {
+          setGameState((g) => (g ? { ...g, phase: PHASES.GAMEOVER } : g));
+        }, []);
+        const resetToHome = useCallback(() => {
+          setGameState(null);
+          setVotes({});
+          setScores({});
+          setPage("home");
+        }, []);
+
+        const handleGameExit = useCallback(
+          (action) => {
+            if (action === "reveal")
+              setGameState((g) => (g ? { ...g, phase: "instant_reveal" } : g));
+            else resetToHome();
+          },
+          [resetToHome],
+        );
+
+        const isLastRound = gameState
+          ? gameState.round >= (config.totalRounds || 3)
+          : false;
+
+        return (
+          <div className="game-root">
+            {page === "home" && (
+              <HomeScreen
+                onStart={() => setPage("setup")}
+                onSettings={() => setPage("settings")}
+              />
+            )}
+            {page === "settings" && (
+              <SettingsScreen onBack={() => setPage("home")} />
+            )}
+            {page === "setup" && (
+              <SetupScreen
+                players={players}
+                setPlayers={setPlayers}
+                config={config}
+                setConfig={setConfig}
+                onBack={() => setPage("home")}
+                onStartGame={startGame}
+                onChaosConfig={() => setPage("chaos-config")}
+              />
+            )}
+            {page === "chaos-config" && (
+              <ChaosConfigScreen
+                chaosConfig={chaosConfig}
+                setChaosConfig={setChaosConfig}
+                onBack={() => setPage("setup")}
+              />
+            )}
+            {page === "game" && gameState && (
+              <>
+                {gameState.phase === PHASES.GAMEOVER && (
+                  <GameOverScreen
+                    players={players}
+                    scores={scores}
+                    onPlayAgain={() => setPage("setup")}
+                    onHome={resetToHome}
+                  />
+                )}
+                {gameState.phase === PHASES.REVEAL && (
+                  <RevealScreen
+                    gameState={gameState}
+                    players={players}
+                    onNext={advanceReveal}
+                    onExit={handleGameExit}
+                  />
+                )}
+                {gameState.phase === PHASES.TURNS && (
+                  <TurnsScreen
+                    gameState={gameState}
+                    players={players}
+                    onNext={nextTurn}
+                    onEnd={endTurns}
+                    onExit={handleGameExit}
+                  />
+                )}
+                {gameState.phase === PHASES.VOTE && (
+                  <VoteScreen
+                    gameState={gameState}
+                    players={players}
+                    onVote={handleVote}
+                    voterIdx={voterIdx}
+                    onExit={handleGameExit}
+                  />
+                )}
+                {gameState.phase === PHASES.RESULTS && (
+                  <ResultsScreen
+                    gameState={gameState}
+                    players={players}
+                    votes={votes}
+                    scores={scores}
+                    isLastRound={isLastRound}
+                    onNextRound={nextRound}
+                    onEndGame={endGame}
+                  />
+                )}
+                {gameState.phase === "instant_reveal" && (
+                  <InstantRevealScreen
+                    gameState={gameState}
+                    players={players}
+                    scores={scores}
+                    isLastRound={isLastRound}
+                    onNextRound={nextRound}
+                    onEndGame={endGame}
+                    onHome={resetToHome}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
